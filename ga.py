@@ -7,7 +7,7 @@ from collections import OrderedDict
 from pylab import imshow, show, get_cmap
 from numpy import random
 
-random.seed(1)
+#random.seed(1)
 
 def plot_agent(agent):
 # 	# 4x3: rgb 
@@ -19,121 +19,132 @@ def plot_agent(agent):
  	show()
 
 
-def initialise_agent(nx, ny):
-	''' 
-	nx: number of pixels in the x axis
-	ny: number of pixels in the y axis
-	'''
-	init_agent = {'pixels': random.random((nx, ny, 3))}
+def initialise_agent(number_pixels):
+	init_agent = {'pixels': random.random((number_pixels, 3))}
 	return init_agent
 
-
 	
-def calculate_fitness(agent):
+def calculate_fitness(agent_pixels, number_pixels):
 	# Will fill in properly later, for now just random
-	fitness = random.random()
+	#fitness = random.random()
+	# good = closer to [1,1,1] = low difference from [1,1,1]
+	# fitness = 1 - difference
+	#fitness = np.absolute(np.full((number_pixels, 3), 1) - agent_pixels).mean()
+
+	fitness = agent_pixels.mean()
 	return fitness
 
-def breed(agent1, agent2, nx, ny):
+# def mutate(agent_pixels, percentage_pixels_mutate, nx, ny):
+# 	'''
+# 	Randomly mutate a certain percentage of the agent's pixels randomly
+# 	'''
+# 	random_mutation_pixels = np.random.choice(range(0, nx*ny), round((nx*ny)*percentage_pixels_mutate), replace = False)
+# 	new_pixels = agent_pixels
+# 	for pixel in random_mutation_pixels:
+# 		row_number = pixel//ny
+# 		column_number = pixel%ny
+# 		replace_with = random.random(3)
+# 		new_pixels[row_number][column_number] = replace_with
+
+# 	new_fitness = calculate_fitness(new_pixels, nx, ny)
+# 	return new_pixels, new_fitness
+
+def breed(agent1, agent2, prob_mutation, number_pixels):
 	'''
 	Make a baby between agent1 and agent2
 	Update agent1 with the random_half_pixels from agent2
 	Calculate it's fitness
 	'''
 
-	random_half_pixels = np.random.choice(range(0, nx*ny), round((nx*ny)/2), replace = False)
+	random_half_pixels = np.random.choice(range(0, number_pixels), round((number_pixels)/2), replace = False)
 		
 	baby_agent = agent1
 	for pixel in random_half_pixels:
-		row_number = pixel//ny
-		column_number = pixel%ny
-		baby_agent.get('pixels')[row_number][column_number] = agent2.get('pixels')[row_number][column_number]
+		baby_agent.get('pixels')[pixel]= agent2.get('pixels')[pixel]
 
-	baby_agent.update({'fitness' : calculate_fitness(baby_agent)})
+	for pixel in range(0, number_pixels):
+		# Randomly mutate for a proportion of these pixels
+		if random.random(1) < prob_mutation:
+			baby_agent.get('pixels')[pixel] = random.random(3)
+
+	baby_agent.update({'fitness' : calculate_fitness(baby_agent.get('pixels'), number_pixels)})
+
 	return baby_agent
 
-def make_next_gen(skim_percentage, agents, pop_size, nx, ny):
+def make_next_gen(skim_percentage, agents, pop_size, number_pixels):
 
-	print(len(agents))
 	number_who_survive = round(skim_percentage*len(agents))
 
-	number_who_died = pop_size - number_who_survive
+	# Always keep at least 2 for breeding
+	if number_who_survive < 2:
+		number_who_survive = 2
 
-	agents_order_by_fitness = sorted(agents, key=lambda d: d['fitness'], reverse=True)
+	agents = sorted(agents, key=lambda d: d['fitness'], reverse=False)
 
-	agents = agents_order_by_fitness[:number_who_survive]
-	print(len(agents))
-	# Replace the number who died with random breedings of the survivors
+	# Replace the ones with the lowest fitness with random breedings of the highest fitness
 
-	for sex in range(0, number_who_died):
-		agent1 = random.choice(agents)
-		agent2 = random.choice(agents)
-		baby_agent = breed(agent1, agent2, nx, ny)
-		agents.append(baby_agent)
-		print(len(agents))
+	for agent in agents[number_who_survive:]:
+		agent1 = random.choice(agents[:number_who_survive])
+		agent2 = random.choice(agents[:number_who_survive])
+		baby_agent = breed(agent1, agent2, prob_mutation, number_pixels)
+		agent = baby_agent
 
-	return agents
+	# print("after")
+	# for ag in agents:
+	# 	print(ag.get('fitness'))
 
-def mutate(agent_pixels, percentage_pixels_mutate, nx, ny):
-	'''
-	Randomly mutate a certain percentage of the agent's pixels randomly
-	'''
-	random_mutation_pixels = np.random.choice(range(0, nx*ny), round((nx*ny)*percentage_pixels_mutate), replace = False)
-	#print(random_mutation_pixels)
-	new_pixels = agent_pixels
-	for pixel in random_mutation_pixels:
-		row_number = pixel//ny
-		column_number = pixel%ny
-		#print(agent_pixels[row_number][column_number])
-		replace_with = random.random(3)
-		#print(replace_with)
-		new_pixels[row_number][column_number] = replace_with
 
-	new_fitness = calculate_fitness(agent_pixels)
-	return new_pixels, new_fitness
+
+def get_population_mean_fitness(agents):
+	fitnesses = []
+	for agent in agents:
+		fitnesses.append(agent.get('fitness'))
+	return np.mean(fitnesses)
+
 
 if __name__ == '__main__':
 
-	nx = 2
-	ny = 2
-	pop_size = 3
-	skim_percentage = 0.5
-	percentage_pixels_mutate = 0.3 # What percentage of all pixels get mutated if at all
+	nx = 10
+	ny = 10
+	number_pixels = nx*ny
+	pop_size = 100
+	assert pop_size >= 3, "Pick a population size >=3"
+	skim_percentage = 0.25 # percentage of agents who survive each year
+	#percentage_pixels_mutate = 0.1 # What percentage of all pixels get mutated if at all
+	prob_mutation = 0.4
+	num_iterations = 5000
 
+	# Initialisation:
 	agents = []
 	for agent in range(0, pop_size):
-		agents.append(initialise_agent(nx, ny))
-	
-
-	#for agent in agents:
-	#	plot_agent(agent)
+		agents.append(initialise_agent(number_pixels))
 
 	for agent in agents:
-	 	agent.update({'fitness' : calculate_fitness(agent)})
+	 	agent.update({'fitness' : calculate_fitness(agent.get('pixels'), number_pixels)})
 
-	agents = make_next_gen(skim_percentage, agents, pop_size, nx, ny)
+	print("population before:")
+	mean_pixel = get_population_mean_fitness(agents)
+	print(mean_pixel)
 
-	new_agents =[]
-	for i, agent in enumerate(agents):
-		#print("before mutation")
-		#print(agent)
-		agent_pixels = agent.get('pixels')
-		new_pixels, new_fitness = mutate(agent_pixels, percentage_pixels_mutate, nx, ny)
-		#agent.update({'pixels' : new_pixels, 'fitness' : new_fitness})
-		new_agents.append({'pixels' : new_pixels, 'fitness' : new_fitness})
-		print("after mutation")
-		print(new_pixels)
-	#print("after mutation")
-	#print(agents)
-	print("new after mutation")
-	print(new_agents)
+	# Iterations: 
+	for iteration in range(0,num_iterations):
 
-	# print("dfjdsfl")
-	# init_agent = initialise_agent(nx, ny)
+		make_next_gen(skim_percentage, agents, pop_size, number_pixels)
 
-	# print(init_agent)
-	# init_agent.get('pixels')[1][1] = random.random(3)
-	# print("dfjdsfl")
-	# print(init_agent)
+		if iteration % 1000 == 0:
+			print(iteration)
+
+	print("population after:")
+	mean_pixel = get_population_mean_fitness(agents)
+	print(mean_pixel)
+	print(skim_percentage)
+	print(prob_mutation)
+	print(num_iterations)
+
+	# print("after")
+	# for ag in agents:
+	#  	print(ag.get('pixels'))
+
+
 
 
