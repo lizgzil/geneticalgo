@@ -7,7 +7,7 @@ from collections import OrderedDict
 from pylab import imshow, show, get_cmap
 from numpy import random
 
-#random.seed(1)
+random.seed(1)
 
 def plot_agent(agent):
 # 	# 4x3: rgb 
@@ -56,18 +56,33 @@ def breed(agent1, agent2, prob_mutation, number_pixels):
 	Calculate it's fitness
 	'''
 
-	random_half_pixels = np.random.choice(range(0, number_pixels), round((number_pixels)/2), replace = False)
-		
-	baby_agent = agent1
+	random_half_pixels = np.random.choice(range(0, number_pixels), 
+		round((number_pixels)/2), replace = False)
+
+	baby_agent = {'pixels' : agent1.get('pixels')}
 	for pixel in random_half_pixels:
-		baby_agent.get('pixels')[pixel]= agent2.get('pixels')[pixel]
+		baby_agent['pixels'][pixel]= agent2['pixels'][pixel]
 
-	for pixel in range(0, number_pixels):
-		# Randomly mutate for a proportion of these pixels
-		if random.random(1) < prob_mutation:
-			baby_agent.get('pixels')[pixel] = random.random(3)
+	print('1')
+	print(baby_agent)
 
-	baby_agent.update({'fitness' : calculate_fitness(baby_agent.get('pixels'), number_pixels)})
+	random_pixels = np.random.choice(range(0, number_pixels), 
+		round(prob_mutation*number_pixels), replace = False)
+
+	#for pixel in random_pixels:
+	#	baby_agent.get('pixels')[pixel] = random.random(3)
+
+	baby_agent['pixels'][random_pixels] = random.random(
+		(round(prob_mutation*number_pixels), 3)
+	)
+	print('2')
+	print(baby_agent)
+
+	baby_agent = {'pixels': baby_agent['pixels'], 'fitness': calculate_fitness(
+		baby_agent.get('pixels'), number_pixels
+	)}
+	print('3')
+	print(baby_agent)
 
 	return baby_agent
 
@@ -79,19 +94,49 @@ def make_next_gen(skim_percentage, agents, pop_size, number_pixels):
 	if number_who_survive < 2:
 		number_who_survive = 2
 
-	agents = sorted(agents, key=lambda d: d['fitness'], reverse=False)
+	agents_ordered = sorted(agents, key=lambda d: d['fitness'], reverse=True)
 
 	# Replace the ones with the lowest fitness with random breedings of the highest fitness
 
-	for agent in agents[number_who_survive:]:
-		agent1 = random.choice(agents[:number_who_survive])
-		agent2 = random.choice(agents[:number_who_survive])
-		baby_agent = breed(agent1, agent2, prob_mutation, number_pixels)
-		agent = baby_agent
+	fittest_agents = agents_ordered[:number_who_survive]
 
-	# print("after")
-	# for ag in agents:
-	# 	print(ag.get('fitness'))
+	new_agents_pixels = []
+	#agents = fittest_agents
+	c = 0
+	for rep_agent in range(0,(pop_size - number_who_survive)):
+
+		print('3.5')
+		print(new_agents_pixels)
+		agent1 = random.choice(fittest_agents)
+		agent2 = random.choice(fittest_agents)
+		print('3.6')
+		print(new_agents_pixels)
+		#baby_agent = breed(agent1, agent2, prob_mutation, number_pixels)
+		print('3.7')
+		print(new_agents_pixels)
+		print('4')
+		#print(baby_agent)
+		#new_agents.append(baby_agent)
+		#new_agents['pixels'].append(baby_agent.get('pixels'))
+		#new_agents['fitness'].append(baby_agent.get('fitness'))
+		#new_agents_pixels.append(baby_agent.copy())
+		new_agents_pixels.append(breed(agent1, agent2, prob_mutation, number_pixels))
+		
+		#agents.append({'pixels':baby_agent.get('pixels'), 'fitness':baby_agent.get('fitness')})
+		print('5')
+		#print(agents)
+		print(new_agents_pixels)
+		c = c+1
+
+	#for new_agents in new_agents_pixels:
+	# 	new_agents.update({'fitness' : calculate_fitness(new_agents.get('pixels'), number_pixels)})
+
+
+	#print(new_agents)
+	#agents = fittest_agents + new_agents
+	print('6')
+	print(agents)
+	return agents
 
 
 
@@ -104,15 +149,15 @@ def get_population_mean_fitness(agents):
 
 if __name__ == '__main__':
 
-	nx = 10
-	ny = 10
+	nx = 2
+	ny = 2
 	number_pixels = nx*ny
-	pop_size = 100
+	pop_size = 4
 	assert pop_size >= 3, "Pick a population size >=3"
-	skim_percentage = 0.25 # percentage of agents who survive each year
+	skim_percentage = 0.3 # percentage of agents who survive each year
 	#percentage_pixels_mutate = 0.1 # What percentage of all pixels get mutated if at all
-	prob_mutation = 0.4
-	num_iterations = 5000
+	prob_mutation = 0.8
+	num_iterations = 3
 
 	# Initialisation:
 	agents = []
@@ -126,10 +171,16 @@ if __name__ == '__main__':
 	mean_pixel = get_population_mean_fitness(agents)
 	print(mean_pixel)
 
+	print("before")
+	print(agents)
+
 	# Iterations: 
 	for iteration in range(0,num_iterations):
 
-		make_next_gen(skim_percentage, agents, pop_size, number_pixels)
+		agents = make_next_gen(skim_percentage, agents, pop_size, number_pixels)
+
+		print('7')
+		print(agents)
 
 		if iteration % 1000 == 0:
 			print(iteration)
@@ -141,9 +192,12 @@ if __name__ == '__main__':
 	print(prob_mutation)
 	print(num_iterations)
 
-	# print("after")
-	# for ag in agents:
-	#  	print(ag.get('pixels'))
+	print("after")
+	print(agents)
+	#for ag in agents:
+	 #	print(ag.get('pixels'))
+
+	 # The pixels are changing, the fitness isn't
 
 
 
